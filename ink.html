@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="referrer" content="no-referrer">
+<title>正在进入…</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#fff;overflow:hidden}
+  #load{position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;
+        font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#999}
+  iframe{width:100%;height:100%;border:0;display:block}
+</style>
+</head>
+<body>
+<div id="load">正在进入…</div>
+<script>
+(function () {
+  var c = '', u = '';
+  try { c = new URLSearchParams(location.search).get('c') || ''; } catch (e) { c = ''; }
+  try {
+    c = c.replace(/-/g, '+').replace(/_/g, '/');
+    u = decodeURIComponent(escape(atob(c)));
+  } catch (e) { u = ''; }
+  if (!/^https?:\/\//i.test(u)) {
+    document.getElementById('load').textContent = '链接无效或已失效';
+    return;
+  }
+  var f = document.createElement('iframe');
+  f.setAttribute('allow', 'fullscreen; autoplay; clipboard-write; camera; microphone; display-capture');
+  f.setAttribute('referrerpolicy', 'no-referrer');
+  f.src = u;
+  f.onload = function () {
+    var l = document.getElementById('load');
+    if (l && l.parentNode) l.parentNode.removeChild(l);
+  };
+  document.body.appendChild(f);
+  setTimeout(function () {
+    var l = document.getElementById('load');
+    if (l && l.parentNode) l.parentNode.removeChild(l);
+  }, 1200);
+})();
+</script>
+</body>
+</html>
