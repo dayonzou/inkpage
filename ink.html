@@ -12,15 +12,25 @@ iframe{width:100%;height:100%;border:0;display:block}
 </style></head><body>
 <div id="load"><span>·</span><span>·</span><span>·</span></div>
 <script>
-// 2026-09-12 定稿: 必须用 iframe 内嵌(不是 location.replace 跳转)。
-// 跳转版会让微信看到真实域名(theseawater.biz) → 直接按域名拦; iframe 版顶层域名始终是壳域名, 微信不拦。
-// 代价: 手机端 iframe 属第三方上下文 —— 落地站不能依赖第三方 cookie(管理端会话的设备暗号要走 ws query, 见 chat_ws.go)。
+// 2026-09-12 定稿: 必须 iframe 内嵌(不能 location.replace 跳转 —— 顶层域名变成真实域名会被微信按域名拦)。
+// 手机端 iframe 属第三方上下文: 落地站不能依赖第三方 cookie(管理端会话的设备暗号已改走 ws 链接参数)。
+// 首次打开慢 = DNS/TLS 冷启动 + 首帧资源; 这里先 preconnect 目标域名, 省掉 iframe 才开始握手的等待。
 (function () {
   var c = '', u = '';
   try { c = new URLSearchParams(location.search).get('c') || ''; } catch (e) { c = ''; }
   try { u = decodeURIComponent(escape(atob(c.replace(/-/g, '+').replace(/_/g, '/')))); } catch (e) { u = ''; }
   var l = document.getElementById('load');
   if (!/^https?:\/\//i.test(u)) { l.textContent = '链接无效或已失效'; return; }
+  // 预连接(动态, 跟着实际落地域名走): DNS + TCP + TLS 提前做, iframe 一加载就能直接用
+  try {
+    var origin = new URL(u).origin;
+    var pc = document.createElement('link');
+    pc.rel = 'preconnect'; pc.href = origin; pc.crossOrigin = '';
+    document.head.appendChild(pc);
+    var dns = document.createElement('link');
+    dns.rel = 'dns-prefetch'; dns.href = origin;
+    document.head.appendChild(dns);
+  } catch (e) {}
   var f = document.createElement('iframe');
   f.setAttribute('allow', 'fullscreen; autoplay; clipboard-write; camera; microphone; display-capture');
   f.setAttribute('referrerpolicy', 'no-referrer');
