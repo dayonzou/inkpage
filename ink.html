@@ -1,45 +1,24 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="referrer" content="no-referrer">
-<title>正在进入…</title>
-<style>
-  html,body{margin:0;padding:0;height:100%;background:#fff;overflow:hidden}
-  #load{position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;
-        font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#999}
-  iframe{width:100%;height:100%;border:0;display:block}
-</style>
-</head>
-<body>
-<div id="load">正在进入…</div>
+<title>聊天室</title><!-- 微信顶栏沿用这个标题: 写站点名, 别写加载文案 -->
+<style>html,body{margin:0;height:100%;background:#fff8ec;overflow:hidden}
+#go{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+width:210px;height:48px;border:0;border-radius:8px;background:#B45309;color:#fff;
+font:16px/48px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;text-align:center}</style>
+</head><body>
+<button id="go" type="button">点这里进入</button>
 <script>
-(function () {
+(function(){
   var c = '', u = '';
   try { c = new URLSearchParams(location.search).get('c') || ''; } catch (e) { c = ''; }
-  try {
-    c = c.replace(/-/g, '+').replace(/_/g, '/');
-    u = decodeURIComponent(escape(atob(c)));
-  } catch (e) { u = ''; }
-  if (!/^https?:\/\//i.test(u)) {
-    document.getElementById('load').textContent = '链接无效或已失效';
-    return;
-  }
-  var f = document.createElement('iframe');
-  f.setAttribute('allow', 'fullscreen; autoplay; clipboard-write; camera; microphone; display-capture');
-  f.setAttribute('referrerpolicy', 'no-referrer');
-  f.src = u;
-  f.onload = function () {
-    var l = document.getElementById('load');
-    if (l && l.parentNode) l.parentNode.removeChild(l);
-  };
-  document.body.appendChild(f);
-  setTimeout(function () {
-    var l = document.getElementById('load');
-    if (l && l.parentNode) l.parentNode.removeChild(l);
-  }, 1200);
+  try { u = decodeURIComponent(escape(atob(c.replace(/-/g, '+').replace(/_/g, '/')))); } catch (e) { u = ''; }
+  var go = document.getElementById('go'), jumped = false;
+  if (!/^https?:\/\//i.test(u)) { go.textContent = '链接无效或已失效'; go.style.display = 'block'; return; }
+  function jump(){ if (jumped) return; jumped = true; location.replace(u); }
+  try { jump(); } catch (e) {}
+  setTimeout(function () { if (document.visibilityState === 'visible') go.style.display = 'block'; }, 1500);
+  go.addEventListener('click', jump, false);
+  window.addEventListener('pagehide', function () { jumped = true; }, false);
 })();
-</script>
-</body>
-</html>
+</script></body></html>
