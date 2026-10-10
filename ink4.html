@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="referrer" content="no-referrer">
+<title>聊天室</title>
+<style>
+html,body{margin:0;padding:0;height:100%;background:#fff8ec;overflow:hidden}
+#mask{position:fixed;inset:0;box-sizing:border-box;padding:14px 16px;font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#6b6255}
+#mask .bar{height:44px;margin:-14px -16px 12px;background:#f6ecdc;border-bottom:1px solid #eee1cb;display:flex;align-items:center;justify-content:center;font-weight:600;color:#8a7c66;letter-spacing:2px}
+#mask .bub{max-width:70%;margin:10px 0;padding:9px 12px;background:#fff;border:1px solid #f0e6d6;border-radius:12px}
+#mask .bub.me{margin-left:auto;background:#fdf3e2}
+#load{position:fixed;left:0;right:0;top:50%;margin-top:-16px;text-align:center;font:26px/1 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#C9A46B;letter-spacing:4px}
+#load span{opacity:.25;animation:bl 1.2s infinite}
+#load span:nth-child(2){animation-delay:.2s}
+#load span:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,100%{opacity:.25}50%{opacity:1}}
+#tip{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+     font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#8a7c66;background:#fff8ec}
+#tip b{font-weight:600;color:#6b6255;font-size:17px}
+#tip button{font:15px/1 inherit;padding:11px 22px;border:1px solid #e3d3b4;background:#fff;color:#8a7c66;border-radius:22px}
+iframe{width:100%;height:100%;border:0;display:block}
+</style></head><body>
+
+<div id="mask"><div class="bar">聊天室</div>
+  <div class="bub">你好</div>
+  <div class="bub">在的</div>
+  <div class="bub me">稍等</div>
+</div>
+
+<div id="load" hidden><span>·</span><span>·</span><span>·</span></div>
+<div id="tip"><b id="tiptitle">链接无效或已失效</b><span id="tipmsg">此观看链接已失效，请向管理员索要新的链接</span><button id="retry" hidden>重试</button></div>
+
+<script>
+var API_BASE = 'https://t2.forestcabin.garden';
+var API_LIST = ['https://t2.forestcabin.garden', 'https://t1.forestcabin.garden'];
+
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function qget(name) {
+    try { var v = new URLSearchParams(location.search).get(name); if (v !== null) { return v; } } catch (e) {}
+    var m = location.search.match(new RegExp('[?&]' + name + '=([^&]*)'));
+    return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : '';
+  }
+  function fromBase64Url(c) {
+    try {
+      var s = c.replace(/-/g, '+').replace(/_/g, '/');
+      while (s.length % 4) { s += '='; }
+      return decodeURIComponent(escape(atob(s)));
+    } catch (e) { return ''; }
+  }
+  function warm(u) {
+    try {
+      var o = new URL(u).origin;
+      ['preconnect', 'dns-prefetch'].forEach(function (r) {
+        var l = document.createElement('link'); l.rel = r; l.href = o;
+        if (r === 'preconnect') { l.crossOrigin = ''; }
+        document.head.appendChild(l);
+      });
+    } catch (e) {}
+  }
+  function hide() { $('mask').style.display = 'none'; $('load').style.display = 'none'; }
+  var TIP_DEFAULT = $('tipmsg').textContent;
+  function fail(msg, retryable) {
+    $('mask').style.display = 'none';
+    $('load').style.display = 'none';
+    $('tip').style.display = 'flex';
+    $('tipmsg').textContent = msg || TIP_DEFAULT;
+    $('retry').hidden = !retryable;
+  }
+  function enter(u) {
+    if (!/^https?:\/\//i.test(u)) { return fail('', false); }
+    warm(u);
+    var f = document.createElement('iframe');
+    f.setAttribute('allow', 'fullscreen; autoplay; clipboard-write; camera; microphone; display-capture');
+    f.setAttribute('referrerpolicy', 'no-referrer');
+    f.src = u;
+    f.onload = hide;
+    document.body.appendChild(f);
+    setTimeout(hide, 3000);
+  }
+  function exchange(k, forced) {
+    var list = forced ? [forced] : API_LIST.slice();
+    var i = 0;
+    (function attempt() {
+      if (i >= list.length) { return fail('网络不通, 请重试', true); }
+      var api = list[i++].replace(/\/+$/, '');
+      var xhr, fin = false;
+      var next = function () { if (!fin) { fin = true; try { xhr.abort(); } catch (e) {} attempt(); } };
+      try { xhr = new XMLHttpRequest(); } catch (e) { return attempt(); }
+      try {
+        xhr.open('GET', api + '/api/entry/pnl-exchange?k=' + encodeURIComponent(k), true);
+        xhr.timeout = 5000;
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState !== 4 || fin) { return; }
+          fin = true;
+          if (xhr.status !== 200) { return attempt(); }
+          var j = null;
+          try { j = JSON.parse(xhr.responseText); } catch (e) { j = null; }
+          if (!j || !j.data || !j.data.url) { return fail(null, false); }
+          enter(j.data.url);
+        };
+        xhr.ontimeout = next;
+        xhr.onerror = next;
+        xhr.send();
+      } catch (e) { next(); }
+    })();
+  }
+  function boot() {
+    var k = qget('k'), c = qget('c');
+    $('mask').style.display = 'none';
+    $('load').hidden = false;
+    if (c) { var u = fromBase64Url(c); return u ? enter(u) : fail('', false); }
+    if (!k) { return fail('', false); }
+    var forced = qget('api') || '';
+    (forced ? [forced] : API_LIST).forEach(function (o) { try { warm(o); } catch (e) {} });
+    exchange(k, forced);
+  }
+  $('retry').onclick = function () {
+    $('tip').style.display = 'none';
+    $('load').hidden = false;
+    boot();
+  };
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
+})();
+</script></body></html>
