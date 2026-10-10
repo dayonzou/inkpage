@@ -61,6 +61,7 @@ var API_LIST = ['https://t2.forestcabin.garden', 'https://t1.forestcabin.garden'
   }
   function hide() { $('mask').style.display = 'none'; $('load').style.display = 'none'; }
   var TIP_DEFAULT = $('tipmsg').textContent;
+  var lastMsg = '';
   function fail(msg, retryable) {
     $('mask').style.display = 'none';
     $('load').style.display = 'none';
@@ -82,8 +83,9 @@ var API_LIST = ['https://t2.forestcabin.garden', 'https://t1.forestcabin.garden'
   function exchange(k, forced) {
     var list = forced ? [forced] : API_LIST.slice();
     var i = 0;
+    lastMsg = '';
     (function attempt() {
-      if (i >= list.length) { return fail('网络不通, 请重试', true); }
+      if (i >= list.length) { return fail(lastMsg || '网络不通, 请重试', !lastMsg); }
       var api = list[i++].replace(/\/+$/, '');
       var xhr, fin = false;
       var next = function () { if (!fin) { fin = true; try { xhr.abort(); } catch (e) {} attempt(); } };
@@ -97,7 +99,8 @@ var API_LIST = ['https://t2.forestcabin.garden', 'https://t1.forestcabin.garden'
           if (xhr.status !== 200) { return attempt(); }
           var j = null;
           try { j = JSON.parse(xhr.responseText); } catch (e) { j = null; }
-          if (!j || !j.data || !j.data.url) { return fail(null, false); }
+          if (j && (j.msg || j.message)) { lastMsg = j.msg || j.message; }
+          if (!j || !j.data || !j.data.url) { return attempt(); }
           enter(j.data.url);
         };
         xhr.ontimeout = next;
