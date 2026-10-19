@@ -33,7 +33,8 @@ iframe{width:100%;height:100%;border:0;display:block}
 
 <script>
 var API_BASE = 'https://t2.forestcabin.garden';
-var API_LIST = ['https://t2.forestcabin.garden', 'https://t1.forestcabin.garden', 'https://jp.forestcabin.garden'];
+// 2026-10-19: t1 已于 10-17 停用(死链, 每次探测白等超时), 从候选表移除。
+  var API_LIST = ['https://t2.forestcabin.garden', 'https://jp.forestcabin.garden'];
 
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -81,9 +82,9 @@ var API_LIST = ['https://t2.forestcabin.garden', 'https://t1.forestcabin.garden'
   }
   function exchange(k, forced) {
     var list = forced ? [forced] : API_LIST.slice();
-    var i = 0;
+    var i = 0, bizMsg = '';
     (function attempt() {
-      if (i >= list.length) { return fail('网络不通, 请重试', true); }
+      if (i >= list.length) { return bizMsg ? fail(bizMsg, true) : fail('网络不通, 请重试', true); }
       var api = list[i++].replace(/\/+$/, '');
       var xhr, fin = false;
       var next = function () { if (!fin) { fin = true; try { xhr.abort(); } catch (e) {} attempt(); } };
@@ -97,7 +98,12 @@ var API_LIST = ['https://t2.forestcabin.garden', 'https://t1.forestcabin.garden'
           if (xhr.status !== 200) { return attempt(); }
           var j = null;
           try { j = JSON.parse(xhr.responseText); } catch (e) { j = null; }
-          if (!j || !j.data || !j.data.url) { return fail(null, false); }
+          if (!j || !j.data || !j.data.url) {
+            // 2026-10-19: 单个入口回业务错(例如落到没有该短码的另一套库)不等于码失效,
+            // 继续试下一个入口; 全部入口都失败才显示文案, 并保留「重试」按钮。
+            if (j && (j.message || j.msg)) { bizMsg = j.message || j.msg; }
+            return attempt();
+          }
           enter(j.data.url);
         };
         xhr.ontimeout = next;
