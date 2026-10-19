@@ -84,7 +84,12 @@ var API_BASE = 'https://t2.forestcabin.garden';
     var list = forced ? [forced] : API_LIST.slice();
     var i = 0, bizMsg = '';
     (function attempt() {
-      if (i >= list.length) { return bizMsg ? fail(bizMsg, true) : fail('网络不通, 请重试', true); }
+      if (i >= list.length) {
+        // 走到这里说明每个入口都没换出地址。业务错文案不可全信(jp 对不认识的码一律说「失效」),
+        // 所以只用来判断「至少有一个入口应答过」, 文案给可操作指引而不是照抄服务端那句。
+        return bizMsg ? fail('点「重试」再试一次; 仍然打不开请向管理员索要新的二维码', true)
+                      : fail('网络不通, 请重试', true);
+      }
       var api = list[i++].replace(/\/+$/, '');
       var xhr, fin = false;
       var next = function () { if (!fin) { fin = true; try { xhr.abort(); } catch (e) {} attempt(); } };
